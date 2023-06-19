@@ -210,13 +210,13 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
 
 
 
-def add_densities(min_r, max_r, num_bins_r, probabs, particle_mass): 
+def add_densities(max_r, num_bins_r, probabs, particle_mass): 
     '''
     Calcualtes the matter density profile from the radial probability 
     density of all the particles.
     '''
     sum_probability_density = sum(probabs)
-    bin_edges = numpy.linspace(min_r, max_r, num_bins_r+1)
+    bin_edges = numpy.linspace(0, max_r, num_bins_r+1)
 
     density_profile = (particle_mass * sum_probability_density) / ((
                     4/3) * numpy.pi * (bin_edges[1:]**3 - bin_edges[:-1]**3) )
@@ -226,7 +226,7 @@ def add_densities(min_r, max_r, num_bins_r, probabs, particle_mass):
 
 
 
-def bootstrap_errors(min_r, max_r, num_bins_r, probss, radii, snapshot, 
+def bootstrap_errors(max_r, num_bins_r, probss, radii, snapshot, 
                      num_samples_bootstrap=50):
     '''
     Calculates the uncertainty on the density profile using 
@@ -236,7 +236,6 @@ def bootstrap_errors(min_r, max_r, num_bins_r, probss, radii, snapshot,
 
     Inputs
     ----------
-    min_r : float
     max_r : float
     num_bins_r : array
     probabs : array / list
@@ -261,7 +260,7 @@ def bootstrap_errors(min_r, max_r, num_bins_r, probss, radii, snapshot,
         sample_y = probss_array[sample_idx]
         
         # Calculate the profile from them        
-        densities_sample = add_densities(min_r, max_r, num_bins_r, 
+        densities_sample = add_densities(max_r, num_bins_r, 
                                          sample_y, particle_mass)
          
         rescaled_density_sample = (len(snapshot)/len(sample_idx))*(
@@ -290,8 +289,7 @@ def bootstrap_errors(min_r, max_r, num_bins_r, probss, radii, snapshot,
 
 
 
-def dynamical_density_calculation(snapshot, 
-                    minim_radius, maxim_radius, number_bins, 
+def dynamical_density_calculation(snapshot, maxim_radius, number_bins, 
                     num_particles_profile, interpolated_potential, 
                     new_energy, calculate_errors = False, 
                     num_samples_bootstrap=100, new_energies=False):
@@ -302,7 +300,6 @@ def dynamical_density_calculation(snapshot,
     Inputs
     ----------
     snapshot : SimSnap object
-    minim_radius : float
     maxim_radius : float
     number_bins : int
     num_particles_profile : int
@@ -314,7 +311,7 @@ def dynamical_density_calculation(snapshot,
     new_energies : bool, optional. The default is False.
     '''
     
-    radii_edges = numpy.linspace(minim_radius, maxim_radius, number_bins+1)
+    radii_edges = numpy.linspace(0, maxim_radius, number_bins+1)
     radii = 0.5 * (radii_edges[:-1] + radii_edges[1:])
 
     # Assumes all the particles have the same mass (DMO simulation)
@@ -348,14 +345,14 @@ def dynamical_density_calculation(snapshot,
     probabs = numpy.array(probabs)
     
 
-    densities = add_densities(minim_radius, maxim_radius, number_bins, 
+    densities = add_densities(maxim_radius, number_bins, 
                                               probabs, particle_mass)
 
     
     dynamical_density = (len(snapshot)/len(probabs))*(densities)
               
     if calculate_errors:
-        lower_bound_error, upper_bound_error = bootstrap_errors(minim_radius, 
+        lower_bound_error, upper_bound_error = bootstrap_errors(
                             maxim_radius, number_bins, probabs, radii, 
                             snapshot, num_samples_bootstrap)
         
@@ -374,7 +371,7 @@ def dynamical_density_calculation(snapshot,
 
 
 
-def calculate_dynamical_density_profile(halo, min_radius, max_radius, num_bins, 
+def calculate_dynamical_density_profile(halo, max_radius, num_bins, 
                                num_particles_profile, number_of_iterations):
     '''
     Calculates the (iterated) dynamical density profile.
@@ -382,7 +379,6 @@ def calculate_dynamical_density_profile(halo, min_radius, max_radius, num_bins,
     Inputs
     ----------
     halo : SimSnap object
-    min_radius : float
     max_radius : float
     num_bins : int
     num_particles_profile : int
@@ -396,26 +392,26 @@ def calculate_dynamical_density_profile(halo, min_radius, max_radius, num_bins,
     up_errs: array. Upper bound errors on the profile.
     '''
     
-    bins = numpy.linspace(min_radius, max_radius, num_bins+1)
+    bins = numpy.linspace(0, max_radius, num_bins+1)
     bin_centres = 0.5 * (bins[:-1] + bins[1:])
     
-    enclosed_mass = pot.calculate_mass_enclosed_from_zero_with_doublesample(
-                        num_bins, halo, min_radius, max_radius)
+    enclosed_mass = pot.calculate_mass_enclosed_with_doublesample(
+                        num_bins, halo, max_radius)
     
     interpolated_potential = pot.interpolated_spherical_potential_with_doublesample(
-                        min_radius, max_radius, mass_enclosed = enclosed_mass)
+                        max_radius, mass_enclosed = enclosed_mass)
     
     # Calculate the first density profile
     print('Calculating dynamical density profile from snapshot...')
     dyn_density, low_err, up_err, old_energies, old_potential, old_probabs, old_l_ang_mom = dynamical_density_calculation(
-                        halo, min_radius, max_radius, num_bins, 
+                        halo, max_radius, num_bins, 
                         num_particles_profile, interpolated_potential, 
                         new_energy = 0, calculate_errors=True, 
                         num_samples_bootstrap = 100, new_energies=False)
 
     # Iterate the profile
     dyn_densities, low_errs, up_errs = it.profile_iteration(number_of_iterations, dyn_density, halo, 
-                          min_radius, max_radius, num_bins, bin_centres, 
+                          max_radius, num_bins, bin_centres, 
                           num_particles_profile, interpolated_potential, 
                           old_energies, old_probabs)
     

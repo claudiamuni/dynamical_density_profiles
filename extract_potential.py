@@ -15,42 +15,40 @@ from scipy.interpolate import interp1d
 G_const = 4.30091e-6
 
 
-
-
-def calculate_mass_enclosed_from_zero_with_doublesample(num_bins, snapshot, 
-                                                        min_r, max_r):
+def calculate_mass_enclosed_with_doublesample(num_bins, snapshot, max_r):
     '''
-    Calculates the mass enclosed at different radii *starting from zero*
+    Calculates the mass enclosed at different radii.
     (The mass is sampled at twice the rate as the number of bins.)
     '''
-    radii_edges_mass = numpy.linspace(min_r, max_r, (2*num_bins)+1)
+    radii_edges_mass = numpy.linspace(0, max_r, (2*num_bins)+1)
     mass_enclosed = pynbody.analysis.profile.Profile(snapshot, ndim=3, 
-                                        bins=radii_edges_mass)['mass_enc']
+                                            bins=radii_edges_mass)['mass_enc']
     mass_enclosed = numpy.insert(mass_enclosed, 0, 0)
-    return mass_enclosed
-
-
-
-
-def calculate_mass_enclosed_from_zero(num_bins, snapshot, min_r, max_r):
-    '''
-    Calculates the mass enclosed at different radii *starting from zero*
-    '''
-    radii_edges_mass = numpy.linspace(min_r, max_r, num_bins+1)
-    mass_enclosed = pynbody.analysis.profile.Profile(snapshot, ndim=3, 
-                                        bins=radii_edges_mass)['mass_enc']
-    
-    mass_enclosed = numpy.insert(mass_enclosed, 0, 0)
-    
+        
     return mass_enclosed
 
 
 
 
 
+def calculate_mass_enclosed(num_bins, snapshot, max_r):
+    '''
+    Calculates the mass enclosed at different radii.
+    '''  
+    radii_edges_mass = numpy.linspace(0, max_r, num_bins+1)
+    mass_enclosed = pynbody.analysis.profile.Profile(snapshot, ndim=3, 
+                                            bins=radii_edges_mass)['mass_enc']
+    mass_enclosed = numpy.insert(mass_enclosed, 0, 0)
+    
+    return mass_enclosed
 
 
-def interpolated_spherical_potential_with_doublesample(min_r, max_r, 
+
+
+
+
+
+def interpolated_spherical_potential_with_doublesample(max_r, 
                                                     mass_enclosed):
     '''
     Calculates the spherically averaged potential from a snapshot.
@@ -59,7 +57,7 @@ def interpolated_spherical_potential_with_doublesample(min_r, max_r,
     '''
 
     # radii at which we have mass enclosed
-    radii = numpy.linspace(min_r, max_r, round(((len(mass_enclosed)-1)/2)+1))
+    radii = numpy.linspace(0, max_r, round(((len(mass_enclosed)-1)/2)+1))
                                                  
     # calculate the spherically averaged potential  
     phi = []
@@ -96,14 +94,14 @@ def interpolated_spherical_potential_with_doublesample(min_r, max_r,
 
 
 
-def interpolated_spherical_potential(min_r, max_r, mass_enclosed):
+def interpolated_spherical_potential(max_r, mass_enclosed):
     '''
     Calculates the spherically averaged potential from a snapshot.
     Returns the potential as an interpolation object.
     '''
     
     # radii for which we have mass enclosed
-    radii = numpy.linspace(min_r, max_r, len(mass_enclosed))
+    radii = numpy.linspace(0, max_r, len(mass_enclosed))
                                                  
     # calculate the potential 
     phi = []
