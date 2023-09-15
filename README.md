@@ -1,5 +1,5 @@
-# "Dynamical" density profiles for dark matter halos
-This package lets you calculate the “dynamical” density profiles of dark matter halos from a simulation snapshot (as described in …).
+# 'Dynamical' density profiles for dark matter halos
+This package lets you calculate the 'dynamical' density profiles of dark matter halos from a simulation snapshot (as described in …).
 Written in Python, the code currently requires the snapshot to be taken from a dark-matter-only simulations.
 
 # Getting started
