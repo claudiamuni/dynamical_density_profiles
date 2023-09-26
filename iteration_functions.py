@@ -12,7 +12,7 @@ import dynamical_functions as dyn
 
 
 def potential_from_dynamical_density(dynamical_profile, num_bins_r, 
-                                     max_r, snapshot):
+                                     max_r):
     '''
     Calculate the gravitational potential inferred by the dynamical
     density profile.
@@ -64,18 +64,18 @@ def updated_energy(old_energy, old_potential, updated_potential,
 
 def profile_iteration(number_of_iterations, old_dyn_density, halo, 
                       max_radius, num_bins, bin_centres, 
-                      num_particles_profile, old_interp_potential, 
+                    old_interp_potential, 
                       old_energies, old_probabs):
     '''
     Iterates the dynamical density profile starting from the profile 
     obtained from the simulation snapshot.
     '''
     
-    for i in range(number_of_iterations):
+    for i in range(number_of_iterations-1):
         print('Iteration number:', i+1)
         
         new_interp_potential = potential_from_dynamical_density(
-            old_dyn_density, num_bins, max_radius, halo)
+            old_dyn_density, num_bins, max_radius)
         
         new_energies = updated_energy(old_energies, 
                                       old_interp_potential(bin_centres), 
@@ -83,10 +83,10 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
                                       old_probabs)
 
         iterated_dyn_density, iterated_low_errs, iterated_up_errs, new_energ, new_potential, new_probabs, new_ang_mom = dyn.dynamical_density_calculation(
-                halo, max_radius, num_bins, num_particles_profile, 
+                halo, max_radius, num_bins, 
                 new_interp_potential, new_energy = new_energies, 
-                calculate_errors = True, num_samples_bootstrap = 100,
-                new_energies = True)
+                calculate_errors = False, num_samples_bootstrap = 0,
+                first_profile = False)
 
         # update the variables and repeat
         old_interp_potential = new_interp_potential
@@ -94,8 +94,27 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
         old_probabs = new_probabs
         old_dyn_density = iterated_dyn_density
 
+    # Final iteration (with errors)
+    new_interp_potential = potential_from_dynamical_density(
+            old_dyn_density, num_bins, max_radius)
+        
+    new_energies = updated_energy(old_energies, 
+                                      old_interp_potential(bin_centres), 
+                                      new_interp_potential(bin_centres), 
+                                      old_probabs)
+
+    iterated_dyn_density, iterated_low_errs, iterated_up_errs, new_energ, new_potential, new_probabs, new_ang_mom = dyn.dynamical_density_calculation(
+                halo, max_radius, num_bins, 
+                new_interp_potential, new_energy = new_energies, 
+                calculate_errors = True, num_samples_bootstrap = 100,
+                first_profile = False)
+
+    old_interp_potential = new_interp_potential
+    old_energies = new_energies
+    old_probabs = new_probabs
+    old_dyn_density = iterated_dyn_density
+
     return iterated_dyn_density, iterated_low_errs, iterated_up_errs
     
     
     
-  

@@ -45,7 +45,8 @@ def calculate_binned_profile(halo, min_radius, max_radius, num_bins,
     bins (num_bins). 
     bin_type can be either 'linear' or 'log'. Default is 'log'
     
-    Returns: binned density distribution, corresponding radii, Poisson errors
+    Returns: binned density distribution, corresponding radii, 
+             95% confidence Poisson errors
     '''
     
     if bin_type == 'log' or 'Log':
@@ -72,14 +73,7 @@ def calculate_binned_profile(halo, min_radius, max_radius, num_bins,
     # calculate the Poisson errors 
     num_part_per_bin = numpy.histogram(particles_radii, bins=bin_edges)[0]
 
-    y_errors = (binned_density_profile) / numpy.sqrt(num_part_per_bin)
+    y_errors = 1.96*(binned_density_profile / numpy.sqrt(num_part_per_bin))
     
     return binned_density_profile, r_profile, y_errors
-
-
-
-
-
-
-
 

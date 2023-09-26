@@ -10,7 +10,12 @@ import binned_profile as bp
 import matplotlib.pyplot as plt
 
 
-# EXAMPLE OF HOW TO USE THE CODE TO OBTAIN A DYNAMICAL DENSITY PROFILE
+
+
+# HOW TO OBTAIN A DYNAMICAL DENSITY PROFILE FROM A 
+# SIMULATION SNAPSHOT: EXAMPLE
+
+
 
 # Load a snapshot
 cutout_size = 120 # Radius where to place the "reflecting" boundary (in kpc)
@@ -20,15 +25,10 @@ low_res_snap, low_res_halo = bp.load_snap_halo(file_name =
 
 
 # Choose the parameters
-maximum_radius = cutout_size # minimum radius is taken to be zero by default
-
-num_particles_profile = len(low_res_halo) # if you want to calculate the 
-                                          # profile only for a subset of 
-                                          # particles then make this a list
-                                          # of the particles' indices
+maximum_radius = cutout_size # minimum radius is zero by default
                                           
-number_bins = 1260*2 # choose the number of bins so that the bin width is 
-                     # approx equal to half the softening length of the 
+number_bins = 2520   # choose the number of bins so that the bin width is 
+                     # approx equal to the softening length of the 
                      # simulation
                      
 number_of_iterations = 3 # choose how many times to iterate the profile 
@@ -41,15 +41,14 @@ number_of_iterations = 3 # choose how many times to iterate the profile
 # errors for the dynamical profile, respectively.
 dynamical_density, lower_errs, upper_errs = dyn.calculate_dynamical_density_profile(
                             low_res_halo, maximum_radius, 
-                            number_bins, num_particles_profile, 
-                            number_of_iterations)
+                            number_bins, number_of_iterations)
 
 
 
 
 # Can calculate the traditional binned profile to compare it to 
 # the dynamical one
-min_radius_binned = 0.096
+min_radius_binned = 0.096 #in kpc
 max_radius_binned = cutout_size
 number_bins_binned = 41
 

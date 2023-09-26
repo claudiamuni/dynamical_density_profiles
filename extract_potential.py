@@ -18,7 +18,9 @@ G_const = 4.30091e-6
 def calculate_mass_enclosed_with_doublesample(num_bins, snapshot, max_r):
     '''
     Calculates the mass enclosed at different radii.
-    (The mass is sampled at twice the rate as the number of bins.)
+    (The mass is sampled at twice the rate as the number of bins 
+    to make sure the correct mass distribution is captured at 
+    small radii.)
     '''
     radii_edges_mass = numpy.linspace(0, max_r, (2*num_bins)+1)
     mass_enclosed = pynbody.analysis.profile.Profile(snapshot, ndim=3, 
@@ -72,17 +74,14 @@ def interpolated_spherical_potential_with_doublesample(max_r,
     # only the odd entries
     mass_enclos_odd = mass_enclosed[1::2]
 
-    for i in range(len(radii)-1, 0, -1):
-        mass_enclos_func = mass_enclos_odd[i-1]
-        current_radius = ((radii[i]+ radii[i-1])/2) 
+    for i in range(0, len(radii)-1, 1):
+        Mass_enclos_func = mass_enclos_odd[i]
+        current_radius = (radii[i]+ radii[i+1])/2
         
-        sum_potential += ((G_const * mass_enclos_func) / (current_radius**2) 
+        sum_potential += ((G_const * Mass_enclos_func) / (current_radius**2) 
                           ) * deltar_bins 
-        phi.append(to_add - sum_potential)
+        phi.append(to_add + sum_potential)
 
-    phi = numpy.array(phi)
-    phi = numpy.flip(phi)
-    phi = phi.tolist()
         
     # interpolate the potential
     f_pot = interp1d(radii, phi, kind='cubic')
@@ -112,18 +111,13 @@ def interpolated_spherical_potential(max_r, mass_enclosed):
 
     deltar_bins = (max(radii)-min(radii)) / (len(radii)-1) 
 
-
-    for i in range(len(radii)-1, 0, -1):
-        mass_enclos_func = (mass_enclosed[i] + mass_enclosed[i-1])/2
-        current_radius = ((radii[i] + radii[i-1])/2) 
+    for i in range(0, len(radii)-1, 1):
+        Mass_enclos_func = (mass_enclosed[i] + mass_enclosed[i+1])/2
+        current_radius = ((radii[i] + radii[i+1])/2) 
         
-        sum_potential += ((G_const * mass_enclos_func) / (current_radius**2)
-                          ) * deltar_bins 
-        phi.append(to_add - sum_potential)
-
-    phi = numpy.array(phi)
-    phi = numpy.flip(phi)
-    phi = phi.tolist()
+        sum_potential += ((G_const * Mass_enclos_func) / ( (current_radius**2) 
+                 ) ) * deltar_bins 
+        phi.append((to_add + sum_potential))
         
     # interpolate the potential
     f_pot = interp1d(radii, phi, kind='cubic')

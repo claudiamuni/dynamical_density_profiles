@@ -9,6 +9,8 @@ import numpy
 from tqdm import tqdm
 import extract_potential as pot
 import iteration_functions as it
+from functools import partial
+import scipy.stats
 
 
 # Value of G in kpc/M⊙⋅(km/s)^2
@@ -19,7 +21,7 @@ G_const= 4.30091e-6
 def initial_conditions(snapshot, particle_numbers):
     '''
     Calculates the initial conditions (x, y, z, vx, vy, vz) 
-    of the particles in the snapshot.
+    of the given particles.
     
     Inputs
     ----------
@@ -38,7 +40,7 @@ def initial_conditions(snapshot, particle_numbers):
 def angular_momentum(IC_x, IC_y, IC_z, IC_vx, IC_vy, IC_vz):
     '''
     Calculates the magnitude of the angular momentum
-    of the particles in the snapshot.
+    from the particles initial conditions.
     '''
     lz = (IC_x * IC_vy)-(IC_y * IC_vx)
     lx = (IC_y * IC_vz)-(IC_z * IC_vy)
@@ -50,8 +52,8 @@ def angular_momentum(IC_x, IC_y, IC_z, IC_vx, IC_vy, IC_vz):
 
 def total_energy(IC_vx, IC_vy, IC_vz, pot_energy):
     '''
-    Calculates the energy (kinetic + potential)
-    of the particles in the snapshot.
+    Calculates the energies (kinetic + potential)
+    of the particles from the initial conditions.
     '''
     kin_energy = (IC_vx**2.)/2.+(IC_vy**2.)/2.+(IC_vz**2.)/2.
     return(pot_energy + kin_energy)
@@ -63,8 +65,8 @@ def unnormalised_probability(energy_of_orbit, l_ang_mom, radii,
                              potential_interp):
     '''
     Calculates the *UNNORMALISED* probability density of finding a 
-    particle at different radii. This probability traces the orbits 
-    of the particles.
+    particle at different radii. This probability traces the radial 
+    orbits of the particle.
     
     Inputs
     ----------
@@ -79,10 +81,11 @@ def unnormalised_probability(energy_of_orbit, l_ang_mom, radii,
     array_energy = numpy.repeat(energy_of_orbit, len(radii)).reshape(-1, 
                                                             len(radii))
     
-    unnormalised_prob = 1/numpy.sqrt( 1* ( array_energy - ( 
+    unnormalised_prob = 1/numpy.sqrt( array_energy - ( 
                         (array_ang_mom**2)/(2* (radii**2)) ) - 
-                        potential_interp(radii)) )
+                        potential_interp(radii)) 
     
+    # take the real part
     unnormalised_prob = numpy.where(numpy.isnan(unnormalised_prob), 0, 
                                   unnormalised_prob) 
 
@@ -212,7 +215,7 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
 
 def add_densities(max_r, num_bins_r, probabs, particle_mass): 
     '''
-    Calcualtes the matter density profile from the radial probability 
+    Calculates the matter density profile from the radial probability 
     density of all the particles.
     '''
     sum_probability_density = sum(probabs)
@@ -225,9 +228,9 @@ def add_densities(max_r, num_bins_r, probabs, particle_mass):
 
 
 
+def bootstrap_errors(max_r, num_bins_r, probabs, snapshot, 
+                    num_samples_bootstrap=100):
 
-def bootstrap_errors(max_r, num_bins_r, probss, radii, snapshot, 
-                     num_samples_bootstrap=50):
     '''
     Calculates the uncertainty on the density profile using 
     bootstrapping.
@@ -239,32 +242,30 @@ def bootstrap_errors(max_r, num_bins_r, probss, radii, snapshot,
     max_r : float
     num_bins_r : array
     probabs : array / list
-    radii : array
     snapshot : SimSnap object
-    num_samples_bootstrap : int, optional. The default is 50.
+    num_samples_bootstrap : int, optional. The default is 100.
     '''
-    
-    densities_repeated = []
 
-    probss_array = numpy.array(probss)
+    densities_repeated = []
+    probs_array = numpy.array(probabs)
     
-    # Assumes all the particles have the same mass (DMO simulation)
     particle_mass = snapshot['mass'][0]
 
     for i in tqdm(range(num_samples_bootstrap)):
         
-        # Extract some probabilities from the total sample 
-        # (the number of samples should be the same as the orginal sample)
-        sample_idx = numpy.random.choice(numpy.arange(len(probss_array)), 
-                                    size=len(probss_array), replace=True)
-        sample_y = probss_array[sample_idx]
+        # Extract some probabilities from the total sample (the number of samples 
+        # should be the same as the orginal sample)
+        sample_idx = numpy.random.choice(numpy.arange(len(probs_array)), 
+                                         size=len(probs_array), 
+                                         replace=True)
+        sample_y = probs_array[sample_idx]
         
         # Calculate the profile from them        
-        densities_sample = add_densities(max_r, num_bins_r, 
-                                         sample_y, particle_mass)
+        densities_sample = add_densities(max_r, num_bins_r, sample_y, 
+                                        particle_mass)
          
         rescaled_density_sample = (len(snapshot)/len(sample_idx))*(
-                                                densities_sample)
+                                                    densities_sample)
         
         densities_repeated.append(rescaled_density_sample)
         
@@ -273,10 +274,10 @@ def bootstrap_errors(max_r, num_bins_r, probss, radii, snapshot,
 
     interval_bootstrap = 95.
 
-    error_lower_bound, error_upper_bound = numpy.percentile(
-                        densities_repeated, (100-interval_bootstrap)/2., 
-                        0), numpy.percentile(densities_repeated, 
-                        interval_bootstrap+(100-interval_bootstrap)/2., 0)
+    error_lower_bound, error_upper_bound = numpy.percentile(densities_repeated, (
+                    100-interval_bootstrap)/2., 0), numpy.percentile(
+                        densities_repeated, interval_bootstrap+(
+                            100-interval_bootstrap)/2., 0)
 
 
     return error_lower_bound, error_upper_bound
@@ -290,9 +291,9 @@ def bootstrap_errors(max_r, num_bins_r, probss, radii, snapshot,
 
 
 def dynamical_density_calculation(snapshot, maxim_radius, number_bins, 
-                    num_particles_profile, interpolated_potential, 
+                    interpolated_potential, 
                     new_energy, calculate_errors = False, 
-                    num_samples_bootstrap=100, new_energies=False):
+                    num_samples_bootstrap=100, first_profile=True):
     '''
     Calculates the dynamical density profile for a given snapshot.
     
@@ -308,7 +309,7 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
     new_energy : array
     calculate_errors : bool, optional. The default is False.
     num_samples_bootstrap : int, optional. The default is 100.
-    new_energies : bool, optional. The default is False.
+    first_profile : bool, optional. The default is True.
     '''
     
     radii_edges = numpy.linspace(0, maxim_radius, number_bins+1)
@@ -326,11 +327,11 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
 
     l_ang_mom = angular_momentum(IC_x, IC_y, IC_z, IC_vx, IC_vy, IC_vz)
      
-    if new_energies == False:
+    if first_profile == True:
         pot_energies = interpolated_potential(numpy.sqrt(IC_x**2 + 
                                                     IC_y**2 + IC_z**2))
         energies_of_orbits = total_energy(IC_vx, IC_vy, IC_vz, pot_energies)
-    if new_energies == True:
+    if first_profile == False:
         energies_of_orbits = new_energy
      
     potential_list = interpolated_potential(radii)
@@ -344,16 +345,14 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
     
     probabs = numpy.array(probabs)
     
-
     densities = add_densities(maxim_radius, number_bins, 
                                               probabs, particle_mass)
-
     
     dynamical_density = (len(snapshot)/len(probabs))*(densities)
               
     if calculate_errors:
         lower_bound_error, upper_bound_error = bootstrap_errors(
-                            maxim_radius, number_bins, probabs, radii, 
+                            maxim_radius, number_bins, probabs,
                             snapshot, num_samples_bootstrap)
         
     else:
@@ -372,7 +371,7 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
 
 
 def calculate_dynamical_density_profile(halo, max_radius, num_bins, 
-                               num_particles_profile, number_of_iterations):
+                               number_of_iterations):
     '''
     Calculates the (iterated) dynamical density profile.
     
@@ -405,14 +404,14 @@ def calculate_dynamical_density_profile(halo, max_radius, num_bins,
     print('Calculating dynamical density profile from snapshot...')
     dyn_density, low_err, up_err, old_energies, old_potential, old_probabs, old_l_ang_mom = dynamical_density_calculation(
                         halo, max_radius, num_bins, 
-                        num_particles_profile, interpolated_potential, 
-                        new_energy = 0, calculate_errors=True, 
-                        num_samples_bootstrap = 100, new_energies=False)
+                        interpolated_potential, 
+                        new_energy = 0, calculate_errors=False, 
+                        num_samples_bootstrap = 0, first_profile=True)
 
     # Iterate the profile
     dyn_densities, low_errs, up_errs = it.profile_iteration(number_of_iterations, dyn_density, halo, 
                           max_radius, num_bins, bin_centres, 
-                          num_particles_profile, interpolated_potential, 
+                          interpolated_potential, 
                           old_energies, old_probabs)
     
     return dyn_densities, low_errs, up_errs
