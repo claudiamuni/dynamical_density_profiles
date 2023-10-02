@@ -6,8 +6,8 @@
 
 
 import numpy
-from ..dynamical_density import extract_potential as pot
-from ..dynamical_density import dynamical_functions as dyn
+import extract_potential as pot
+import dynamical_functions as dyn
 
 
 
