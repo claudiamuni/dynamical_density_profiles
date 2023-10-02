@@ -5,8 +5,8 @@
 """
 
 import numpy
-import dynamical_functions as dyn
-import binned_profile as bp
+from ..dynamical_density import dynamical_functions as dyn
+from ..dynamical_density import binned_profile as bp
 import matplotlib.pyplot as plt
 
 

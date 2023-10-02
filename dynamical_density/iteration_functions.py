@@ -6,8 +6,8 @@
 
 
 import numpy
-import extract_potential as pot
-import dynamical_functions as dyn
+from ..dynamical_density import extract_potential as pot
+from ..dynamical_density import dynamical_functions as dyn
 
 
 
@@ -95,7 +95,6 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
         old_dyn_density = iterated_dyn_density
 
     # Final iteration (with errors)
-    print('Final iteration')
     new_interp_potential = potential_from_dynamical_density(
             old_dyn_density, num_bins, max_radius)
         

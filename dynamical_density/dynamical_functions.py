@@ -7,8 +7,8 @@
 
 import numpy
 from tqdm import tqdm
-import extract_potential as pot
-import iteration_functions as it
+from ..dynamical_density import extract_potential as pot
+from ..dynamical_density import iteration_functions as it
 
 
 # Value of G in kpc/M⊙⋅(km/s)^2
