@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 setup(
     name='dynamical_density_profiles',
     version='1.0.0',
-    url='https://github.com/claudiamuni/dynamical_density_profiles',
+    url='https://github.com/claudiamuni/dynamical_density_profiles.git',
     author='Claudia Muni',
     author_email='claudia.muni.21@ucl.ac.uk',
     description='Calculate dynamical density profiles of simulated halos',
