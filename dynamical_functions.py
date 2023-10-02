@@ -9,8 +9,6 @@ import numpy
 from tqdm import tqdm
 import extract_potential as pot
 import iteration_functions as it
-from functools import partial
-import scipy.stats
 
 
 # Value of G in kpc/M⊙⋅(km/s)^2
