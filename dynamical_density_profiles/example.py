@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 
 
-# Load a snapshot
+# Load a snapshot (here loaded with pynbody as an example)
 cutout_size = 120 # Radius where to place the "reflecting" boundary (in kpc)
 low_res_snap, low_res_halo = bp.load_snap_halo(file_name = 
                         'Halo1459_DMO_lowres/output_00101', halo_number = 53, 
