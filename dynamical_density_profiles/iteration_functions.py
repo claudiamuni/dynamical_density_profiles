@@ -8,6 +8,7 @@
 import numpy
 import extract_potential as pot
 import dynamical_functions as dyn
+import pynbody
 
 
 
@@ -70,51 +71,136 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
     Iterates the dynamical density profile starting from the profile 
     obtained from the simulation snapshot.
     '''
-    
-    for i in range(number_of_iterations-1):
-        print('Iteration number:', i+1)
+
+    if len(pynbody.snapshot.SimSnap.families(halo)) == 1:
+
+        for i in range(number_of_iterations-1):
+            print('Iteration number:', i+1)
         
+            new_interp_potential = potential_from_dynamical_density(
+                                    old_dyn_density, num_bins, max_radius)
+
+            new_energies = updated_energy(old_energies, 
+                                    old_interp_potential(bin_centres), 
+                                    new_interp_potential(bin_centres), 
+                                    old_probabs)
+
+            iterated_dyn_density, iterated_low_errs, iterated_up_errs, new_energ, new_potential, new_probabs, new_ang_mom = dyn.dynamical_density_calculation(
+                                    halo, max_radius, num_bins, 
+                                    new_interp_potential, new_energy = new_energies, 
+                                    calculate_errors = False, num_samples_bootstrap = 0,
+                                    first_profile = False)
+
+            # update the variables and repeat
+            old_interp_potential = new_interp_potential
+            old_energies = new_energies
+            old_probabs = new_probabs
+            old_dyn_density = iterated_dyn_density
+
+        # Final iteration (with errors)
         new_interp_potential = potential_from_dynamical_density(
-            old_dyn_density, num_bins, max_radius)
-        
+                    old_dyn_density, num_bins, max_radius)
+                
         new_energies = updated_energy(old_energies, 
-                                      old_interp_potential(bin_centres), 
-                                      new_interp_potential(bin_centres), 
-                                      old_probabs)
+                                            old_interp_potential(bin_centres), 
+                                            new_interp_potential(bin_centres), 
+                                            old_probabs)
 
         iterated_dyn_density, iterated_low_errs, iterated_up_errs, new_energ, new_potential, new_probabs, new_ang_mom = dyn.dynamical_density_calculation(
-                halo, max_radius, num_bins, 
-                new_interp_potential, new_energy = new_energies, 
+                        halo, max_radius, num_bins, 
+                        new_interp_potential, new_energy = new_energies, 
+                        calculate_errors = True, num_samples_bootstrap = 100,
+                        first_profile = False)
+
+        #old_interp_potential = new_interp_potential
+        #old_energies = new_energies
+        #old_probabs = new_probabs
+        #old_dyn_density = iterated_dyn_density
+
+        return iterated_dyn_density, iterated_low_errs, iterated_up_errs
+    
+
+            
+
+    elif len(pynbody.snapshot.SimSnap.families(halo)) > 1:
+
+        for i in range(number_of_iterations-1):
+            print('Iteration number:', i+1)
+
+            new_interp_potential = potential_from_dynamical_density(
+                                    old_dyn_density, num_bins, max_radius)
+
+            new_energies_dm = updated_energy(old_energies[0], 
+                                      old_interp_potential(bin_centres), 
+                                      new_interp_potential(bin_centres), 
+                                      old_probabs[0])
+
+            new_energies_stars = updated_energy(old_energies[1], 
+                                      old_interp_potential(bin_centres), 
+                                      new_interp_potential(bin_centres), 
+                                      old_probabs[1])
+
+            iterated_dyn_density_dm, iterated_low_errs_dm, iterated_up_errs_dm, new_energ_dm, new_potential_dm, new_probabs_dm, new_ang_mom_dm = dyn.dynamical_density_calculation(
+                halo.dm, max_radius, num_bins, 
+                new_interp_potential, new_energy = new_energies_dm, 
                 calculate_errors = False, num_samples_bootstrap = 0,
                 first_profile = False)
 
-        # update the variables and repeat
-        old_interp_potential = new_interp_potential
-        old_energies = new_energies
-        old_probabs = new_probabs
-        old_dyn_density = iterated_dyn_density
+            iterated_dyn_density_stars, iterated_low_errs_stars, iterated_up_errs_stars, new_energ_stars, new_potential_stars, new_probabs_stars, new_ang_mom_stars = dyn.dynamical_density_calculation(
+                halo.s, max_radius, num_bins, 
+                new_interp_potential, new_energy = new_energies_stars, 
+                calculate_errors = False, num_samples_bootstrap = 0,
+                first_profile = False)
 
-    # Final iteration (with errors)
-    new_interp_potential = potential_from_dynamical_density(
-            old_dyn_density, num_bins, max_radius)
-        
-    new_energies = updated_energy(old_energies, 
+            iterated_dyn_density = iterated_dyn_density_dm + iterated_dyn_density_stars
+
+            # update the variables and repeat
+            old_interp_potential = new_interp_potential
+            old_energies = [new_energies_dm, new_energies_stars]
+            old_probabs = [new_probabs_dm, new_probabs_stars]
+            old_dyn_density = iterated_dyn_density
+
+
+        # Final iteration (with errors)
+        new_interp_potential = potential_from_dynamical_density(
+                    old_dyn_density, num_bins, max_radius)
+
+        new_energies_dm = updated_energy(old_energies[0], 
                                       old_interp_potential(bin_centres), 
                                       new_interp_potential(bin_centres), 
-                                      old_probabs)
+                                      old_probabs[0])
 
-    iterated_dyn_density, iterated_low_errs, iterated_up_errs, new_energ, new_potential, new_probabs, new_ang_mom = dyn.dynamical_density_calculation(
-                halo, max_radius, num_bins, 
-                new_interp_potential, new_energy = new_energies, 
+        new_energies_stars = updated_energy(old_energies[1], 
+                                      old_interp_potential(bin_centres), 
+                                      new_interp_potential(bin_centres), 
+                                      old_probabs[1])
+
+
+        iterated_dyn_density_dm, iterated_low_errs_dm, iterated_up_errs_dm, new_energ_dm, new_potential_dm, new_probabs_dm, new_ang_mom_dm = dyn.dynamical_density_calculation(
+                halo.dm, max_radius, num_bins, 
+                new_interp_potential, new_energy = new_energies_dm, 
                 calculate_errors = True, num_samples_bootstrap = 100,
                 first_profile = False)
 
-    old_interp_potential = new_interp_potential
-    old_energies = new_energies
-    old_probabs = new_probabs
-    old_dyn_density = iterated_dyn_density
+        iterated_dyn_density_stars, iterated_low_errs_stars, iterated_up_errs_stars, new_energ_stars, new_potential_stars, new_probabs_stars, new_ang_mom_stars = dyn.dynamical_density_calculation(
+                halo.s, max_radius, num_bins, 
+                new_interp_potential, new_energy = new_energies_stars, 
+                calculate_errors = True, num_samples_bootstrap = 100,
+                first_profile = False)
 
-    return iterated_dyn_density, iterated_low_errs, iterated_up_errs
+
+        #old_interp_potential = new_interp_potential
+        #old_energies = new_energies
+        #old_probabs = new_probabs
+        #old_dyn_density = iterated_dyn_density
+
+        return numpy.array([iterated_dyn_density_dm, iterated_dyn_density_stars]), numpy.array([iterated_low_errs_dm,iterated_low_errs_stars]), numpy.array([iterated_up_errs_dm,iterated_up_errs_stars])
+    
+
+
+    #else:
+    #    raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
+
     
     
     

@@ -9,6 +9,8 @@ import numpy
 from tqdm import tqdm
 import extract_potential as pot
 import iteration_functions as it
+import warnings
+import pynbody
 
 
 # Value of G in kpc/M⊙⋅(km/s)^2
@@ -123,15 +125,11 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
     deltar = (max(radii)-min(radii))/(len(radii)-1)
 
     for i in tqdm(range(len(unnormalised_probs))):
-        
-        # calculate the derivative of the effective potential
-        deriv_eff_potential = numpy.gradient(interpolated_potential(radii) + 
-                                        ((l_ang_mom[i]**2)/(2*(radii**2))), 
-                                        deltar, edge_order=2)
-    
-        
+
         non_zero_probs = numpy.where(unnormalised_probs[i]>0)[0]
             
+        # If the probability is contained within one bin (not resolved)
+        # then prob=1 for the bin corresponding to the particle's initial position
         if len(non_zero_probs) == 0:
             particle_radius = numpy.sqrt(snapshot['pos'][i][0]**2 
                                          + snapshot['pos'][i][1]**2 
@@ -144,7 +142,13 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
 
 
         if len(non_zero_probs) >= 2:
-            r_peri_index = numpy.where(unnormalised_probs[i]>0)[0][0]
+
+            # calculate the derivative of the effective potential
+            deriv_eff_potential = numpy.gradient(interpolated_potential(radii) + 
+                                        ((l_ang_mom[i]**2)/(2*(radii**2))), 
+                                        deltar, edge_order=2)
+    
+            r_peri_index = non_zero_probs[0] 
             r_peri = radii[r_peri_index]
             
             if r_peri_index == 0:
@@ -161,8 +165,8 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
                 
                     
                 if correction_peri < 0:
-                    print('The pericentre correction for particle', i, 
-                          'is negative. The bin width might be too large.')
+                    warnings.warn('The pericentre correction for particle', i, 
+                          'is negative. The bin width might be too large.', UserWarning)
                     correction_peri = 0
                     
                 if correction_peri > 0:
@@ -172,7 +176,7 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
                 
             if unnormalised_probs[i][-1] == 0:
         
-                r_apo_index = numpy.where(unnormalised_probs[i]>0)[-1][-1]
+                r_apo_index = non_zero_probs[-1] 
                 r_apo = radii[r_apo_index]
                     
                 deriv_apo = deriv_eff_potential[r_apo_index] 
@@ -185,8 +189,8 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
                                         potential_effective_apo))/deriv_apo
                 
                 if correction_apo < 0:
-                    print('The apocentre correction for particle', i, 
-                          'is negative. Turning off the correction.')
+                    warnings.warn('The apocentre correction for particle', i, 
+                          'is negative. Turning off the correction.', UserWarning)
                     correction_apo = 0
                     
 
@@ -198,13 +202,11 @@ def calculate_corrections(snapshot, unnormalised_probs, radii, l_ang_mom,
                 correction_apo = 0
             
         # integrals are normalised (*but not divided by delta r!*)
-        tot_integral = numpy.sum(unnormalised_probs[i])
-        
-        normalised_prob = unnormalised_probs[i]/tot_integral
-        probabs.append(normalised_prob)
+        probabs.append(unnormalised_probs[i]/numpy.sum(unnormalised_probs[i]))
         
         
     return probabs
+
 
 
 
@@ -216,13 +218,14 @@ def add_densities(max_r, num_bins_r, probabs, particle_mass):
     Calculates the matter density profile from the radial probability 
     density of all the particles.
     '''
-    sum_probability_density = sum(probabs)
+    sum_probability_density = sum(particle_mass.reshape(len(particle_mass), 1) * probabs)
     bin_edges = numpy.linspace(0, max_r, num_bins_r+1)
 
-    density_profile = (particle_mass * sum_probability_density) / ((
+    density_profile = (sum_probability_density) / ((
                     4/3) * numpy.pi * (bin_edges[1:]**3 - bin_edges[:-1]**3) )
         
     return density_profile
+
 
 
 
@@ -246,8 +249,6 @@ def bootstrap_errors(max_r, num_bins_r, probabs, snapshot,
 
     densities_repeated = []
     probs_array = numpy.array(probabs)
-    
-    particle_mass = snapshot['mass'][0]
 
     for i in tqdm(range(num_samples_bootstrap)):
         
@@ -257,6 +258,8 @@ def bootstrap_errors(max_r, num_bins_r, probabs, snapshot,
                                          size=len(probs_array), 
                                          replace=True)
         sample_y = probs_array[sample_idx]
+
+        particle_mass = snapshot['mass'][sample_idx]
         
         # Calculate the profile from them        
         densities_sample = add_densities(max_r, num_bins_r, sample_y, 
@@ -301,9 +304,7 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
     snapshot : SimSnap object
     maxim_radius : float
     number_bins : int
-    num_particles_profile : int
     interpolated_potential : scipy.interpolate._interpolate.interp1d
-    mass_enclosed : array
     new_energy : array
     calculate_errors : bool, optional. The default is False.
     num_samples_bootstrap : int, optional. The default is 100.
@@ -312,13 +313,12 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
     
     radii_edges = numpy.linspace(0, maxim_radius, number_bins+1)
     radii = 0.5 * (radii_edges[:-1] + radii_edges[1:])
-
-    # Assumes all the particles have the same mass (DMO simulation)
-    particle_mass = snapshot['mass'][0]
     
     # runs through all the particles in the snapshot
     particle_numbers = numpy.linspace(0, len(snapshot)-1, len(snapshot), 
-                                                              dtype=int)       
+                                                              dtype=int)     
+
+    particle_masses = snapshot['mass'][particle_numbers]   
     
     IC_x, IC_y, IC_z, IC_vx, IC_vy, IC_vz = initial_conditions(snapshot, 
                                                         particle_numbers)
@@ -344,10 +344,10 @@ def dynamical_density_calculation(snapshot, maxim_radius, number_bins,
     probabs = numpy.array(probabs)
     
     densities = add_densities(maxim_radius, number_bins, 
-                                              probabs, particle_mass)
+                                              probabs, particle_masses)
     
     dynamical_density = (len(snapshot)/len(probabs))*(densities)
-              
+
     if calculate_errors:
         lower_bound_error, upper_bound_error = bootstrap_errors(
                             maxim_radius, number_bins, probabs,
@@ -388,23 +388,77 @@ def calculate_dynamical_density_profile(halo, max_radius, num_bins,
     low_errs : array. Lower bound errors on the profile.
     up_errs: array. Upper bound errors on the profile.
     '''
+
+    '''
+    # choose type of profile
+
+    if profile_type == 'DMO' or profile_type == 'dmo':
+        if len(pynbody.snapshot.SimSnap.families(halo)) > 1:
+            raise Exception("Simulation snapshot should contain only 1 family (dark matter only)")
+        else:
+            halo = halo.dm
+
+    elif profile_type == 'dm_and_stars' or profile_type == 'DM_and_stars':
+        if len(pynbody.snapshot.SimSnap.families(halo)) != 2:
+            raise Exception("Simulation snapshot should contain 2 families (dark matter and stars)")
+        else:
+            halo = halo.d + halo.dm
+            print(halo)
+
+     
+
+    else:
+        raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
+    '''
     
     bins = numpy.linspace(0, max_radius, num_bins+1)
     bin_centres = 0.5 * (bins[:-1] + bins[1:])
-    
-    enclosed_mass = pot.calculate_mass_enclosed_with_doublesample(
+
+    if len(pynbody.snapshot.SimSnap.families(halo)) == 1:
+        enclosed_mass = pot.calculate_mass_enclosed_with_doublesample(
                         num_bins, halo, max_radius)
+
+    elif len(pynbody.snapshot.SimSnap.families(halo)) > 1:
+        enclosed_mass_dm = pot.calculate_mass_enclosed_with_doublesample(
+                        num_bins, halo.dm, max_radius)
+        enclosed_mass_stars = pot.calculate_mass_enclosed_with_doublesample(
+                        num_bins, halo.s, max_radius)
+        enclosed_mass = enclosed_mass_dm + enclosed_mass_stars
+
+    #else:
+    #    raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
+    
     
     interpolated_potential = pot.interpolated_spherical_potential_with_doublesample(
                         max_radius, mass_enclosed = enclosed_mass)
     
     # Calculate the first density profile
     print('Calculating dynamical density profile from snapshot...')
-    dyn_density, low_err, up_err, old_energies, old_potential, old_probabs, old_l_ang_mom = dynamical_density_calculation(
+
+    if len(pynbody.snapshot.SimSnap.families(halo)) == 1:
+        dyn_density, low_err, up_err, old_energies, old_potential, old_probabs, old_l_ang_mom = dynamical_density_calculation(
                         halo, max_radius, num_bins, 
                         interpolated_potential, 
                         new_energy = 0, calculate_errors=False, 
                         num_samples_bootstrap = 0, first_profile=True)
+    
+    else:
+        dyn_density_dm, low_err_dm, up_err_dm, old_energies_dm, old_potential_dm, old_probabs_dm, old_l_ang_mom_dm = dynamical_density_calculation(
+                        halo.dm, max_radius, num_bins, 
+                        interpolated_potential, 
+                        new_energy = 0, calculate_errors=False, 
+                        num_samples_bootstrap = 0, first_profile=True)
+
+        dyn_density_stars, low_err_stars, up_err_stars, old_energies_stars, old_potential_stars, old_probabs_stars, old_l_ang_mom_stars = dynamical_density_calculation(
+                        halo.s, max_radius, num_bins, 
+                        interpolated_potential, 
+                        new_energy = 0, calculate_errors=False, 
+                        num_samples_bootstrap = 0, first_profile=True)
+
+        dyn_density = dyn_density_dm + dyn_density_stars
+        old_probabs = [old_probabs_dm, old_probabs_stars]
+        old_energies = [old_energies_dm, old_energies_stars]
+        
 
     # Iterate the profile
     dyn_densities, low_errs, up_errs = it.profile_iteration(number_of_iterations, dyn_density, halo, 
