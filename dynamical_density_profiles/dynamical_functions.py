@@ -389,27 +389,6 @@ def calculate_dynamical_density_profile(halo, max_radius, num_bins,
     up_errs: array. Upper bound errors on the profile.
     '''
 
-    '''
-    # choose type of profile
-
-    if profile_type == 'DMO' or profile_type == 'dmo':
-        if len(pynbody.snapshot.SimSnap.families(halo)) > 1:
-            raise Exception("Simulation snapshot should contain only 1 family (dark matter only)")
-        else:
-            halo = halo.dm
-
-    elif profile_type == 'dm_and_stars' or profile_type == 'DM_and_stars':
-        if len(pynbody.snapshot.SimSnap.families(halo)) != 2:
-            raise Exception("Simulation snapshot should contain 2 families (dark matter and stars)")
-        else:
-            halo = halo.d + halo.dm
-            print(halo)
-
-     
-
-    else:
-        raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
-    '''
     
     bins = numpy.linspace(0, max_radius, num_bins+1)
     bin_centres = 0.5 * (bins[:-1] + bins[1:])
@@ -425,10 +404,7 @@ def calculate_dynamical_density_profile(halo, max_radius, num_bins,
                         num_bins, halo.s, max_radius)
         enclosed_mass = enclosed_mass_dm + enclosed_mass_stars
 
-    #else:
-    #    raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
-    
-    
+
     interpolated_potential = pot.interpolated_spherical_potential_with_doublesample(
                         max_radius, mass_enclosed = enclosed_mass)
     

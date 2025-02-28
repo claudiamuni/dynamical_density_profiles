@@ -112,10 +112,6 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
                         calculate_errors = True, num_samples_bootstrap = 100,
                         first_profile = False)
 
-        #old_interp_potential = new_interp_potential
-        #old_energies = new_energies
-        #old_probabs = new_probabs
-        #old_dyn_density = iterated_dyn_density
 
         return iterated_dyn_density, iterated_low_errs, iterated_up_errs
     
@@ -189,18 +185,11 @@ def profile_iteration(number_of_iterations, old_dyn_density, halo,
                 first_profile = False)
 
 
-        #old_interp_potential = new_interp_potential
-        #old_energies = new_energies
-        #old_probabs = new_probabs
-        #old_dyn_density = iterated_dyn_density
-
         return numpy.array([iterated_dyn_density_dm, iterated_dyn_density_stars]), numpy.array([iterated_low_errs_dm,iterated_low_errs_stars]), numpy.array([iterated_up_errs_dm,iterated_up_errs_stars])
     
 
 
-    #else:
-    #    raise Exception("profile_type can only be 'DMO' (dark matter only simulations) or 'DM_and_stars' (dark matter + stars simulations)")
-
+ 
     
     
     
