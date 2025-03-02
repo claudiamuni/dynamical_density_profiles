@@ -8,6 +8,11 @@ import pynbody
 # HOW TO OBTAIN A DYNAMICAL DENSITY PROFILE FROM A 
 # SIMULATION SNAPSHOT: EXAMPLE
 
+# You can use either DMO simulations or simulations containing DM+stars 
+# to obtian both a stellar and a DM density profile. The stellar profile
+# is calculated in the combined potential of DM+stars 
+
+
 
 # Load a snapshot (here loaded with pynbody as an example)
 cutout_size = 1 # Radius where to place the "reflecting" boundary (in kpc)
