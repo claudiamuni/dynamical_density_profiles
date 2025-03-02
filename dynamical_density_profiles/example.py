@@ -12,7 +12,7 @@ import pynbody
 # Load a snapshot (here loaded with pynbody as an example)
 cutout_size = 1 # Radius where to place the "reflecting" boundary (in kpc)
 low_res_snap, low_res_halo = bp.load_snap_halo(file_name = 
-                        '/Users/cmuni/Desktop/EDGE1_snapshots/Halo1459/output_00101', 
+                        '/your_path_to_simulation_snapshot', 
                         halo_number = 0, 
                         cutout_size=cutout_size)
 
@@ -69,14 +69,6 @@ number_bins_binned = 41
 binned_profile_dm, bins_profile_dm, y_errors_dm = bp.calculate_binned_profile(
                         low_res_halo.dm, min_radius_binned, max_radius_binned, 
                         number_bins_binned, bin_type='log')
-
-
-
-# Can calculate the traditional binned profile to compare it to 
-# the dynamical one
-min_radius_binned = 0.05 #in kpc
-max_radius_binned = cutout_size
-number_bins_binned = 41
 
 binned_profile_stars, bins_profile_stars, y_errors_stars = bp.calculate_binned_profile(
                         low_res_halo.s, min_radius_binned, max_radius_binned, 
